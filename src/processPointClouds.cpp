@@ -43,6 +43,16 @@ ProcessPointClouds<PointT>::SeparateClouds(
     typename pcl::PointCloud<PointT>::Ptr cloud) {
   // TODO: Create two new point clouds, one cloud with obstacles and other with
   // segmented plane
+  pcl::PointCloud<PointT>::Ptr cloud_obs(new pcl::PointCloud<PointT>);
+  pcl::PointCloud<PointT>::Ptr cloud_plane(new pcl::PointCloud<PointT>);
+
+  pcl::ExtractIndices<PointT> extract;
+  extract.setInputCloud(cloud);
+  extract.setIndices(inliers);
+  extract.setNegative(false);
+  extract.filter(*cloud_plane);
+  extract.setNegative(true);
+  extract.filter(*cloud_obs);
 
   std::pair<typename pcl::PointCloud<PointT>::Ptr,
             typename pcl::PointCloud<PointT>::Ptr>
@@ -58,11 +68,11 @@ ProcessPointClouds<PointT>::SegmentPlane(
     float distanceThreshold) {
   // Time segmentation process
   auto startTime = std::chrono::steady_clock::now();
-  // pcl::PointIndices::Ptr inliers;
+  pcl::PointIndices::Ptr inliers(new pcl::PointIndices());
 
   // TODO:: Fill in this function to find inliers for the cloud.
   pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients());
-  pcl::PointIndices::Ptr inliers(new pcl::PointIndices());
+  // pcl::PointIndices::Ptr inliers(new pcl::PointIndices());
   // Create the segmentation object
   pcl::SACSegmentation<PointT> seg;
   // Optional
@@ -72,6 +82,7 @@ ProcessPointClouds<PointT>::SegmentPlane(
   seg.setMethodType(pcl::SAC_RANSAC);
   seg.setMaxIterations(maxIterations);
   seg.setDistanceThreshold(distanceThreshold);
+  seg.segment(*inliers, *coefficients);
 
   auto endTime = std::chrono::steady_clock::now();
   auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -86,10 +97,9 @@ ProcessPointClouds<PointT>::SegmentPlane(
 }
 
 template <typename PointT>
-std::vector<typename pcl::PointCloud<PointT>::Ptr>
-ProcessPointClouds<PointT>::Clustering(
-    typename pcl::PointCloud<PointT>::Ptr cloud, float clusterTolerance,
-    int minSize, int maxSize) {
+std::vector<typename pcl::PointCloud<PointT>::Ptr> ProcessPointClouds<
+    PointT>::Clustering(typename pcl::PointCloud<PointT>::Ptr cloud,
+                        float clusterTolerance, int minSize, int maxSize) {
   // Time clustering process
   auto startTime = std::chrono::steady_clock::now();
 
