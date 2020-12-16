@@ -63,7 +63,7 @@ ProcessPointClouds<PointT>::SeparateClouds(
 
   std::pair<typename pcl::PointCloud<PointT>::Ptr,
             typename pcl::PointCloud<PointT>::Ptr>
-      segResult(cloud, cloud);
+      segResult(cloud_obs, cloud_plane);
   return segResult;
 }
 
