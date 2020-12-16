@@ -43,14 +43,21 @@ ProcessPointClouds<PointT>::SeparateClouds(
     typename pcl::PointCloud<PointT>::Ptr cloud) {
   // TODO: Create two new point clouds, one cloud with obstacles and other with
   // segmented plane
-  pcl::PointCloud<PointT>::Ptr cloud_obs(new pcl::PointCloud<PointT>);
-  pcl::PointCloud<PointT>::Ptr cloud_plane(new pcl::PointCloud<PointT>);
+  typename pcl::PointCloud<PointT>::Ptr cloud_obs(
+      new pcl::PointCloud<PointT>());
+  typename pcl::PointCloud<PointT>::Ptr cloud_plane(
+      new pcl::PointCloud<PointT>());
 
   pcl::ExtractIndices<PointT> extract;
   extract.setInputCloud(cloud);
   extract.setIndices(inliers);
   extract.setNegative(false);
   extract.filter(*cloud_plane);
+  // Another way
+  /* for (auto idx : inliers->indices) {
+    cloud_plane->points.push_back(cloud->points[idx]);
+  } */
+
   extract.setNegative(true);
   extract.filter(*cloud_obs);
 
@@ -82,6 +89,7 @@ ProcessPointClouds<PointT>::SegmentPlane(
   seg.setMethodType(pcl::SAC_RANSAC);
   seg.setMaxIterations(maxIterations);
   seg.setDistanceThreshold(distanceThreshold);
+  seg.setInputCloud(cloud);
   seg.segment(*inliers, *coefficients);
 
   auto endTime = std::chrono::steady_clock::now();
@@ -97,9 +105,10 @@ ProcessPointClouds<PointT>::SegmentPlane(
 }
 
 template <typename PointT>
-std::vector<typename pcl::PointCloud<PointT>::Ptr> ProcessPointClouds<
-    PointT>::Clustering(typename pcl::PointCloud<PointT>::Ptr cloud,
-                        float clusterTolerance, int minSize, int maxSize) {
+std::vector<typename pcl::PointCloud<PointT>::Ptr>
+ProcessPointClouds<PointT>::Clustering(
+    typename pcl::PointCloud<PointT>::Ptr cloud, float clusterTolerance,
+    int minSize, int maxSize) {
   // Time clustering process
   auto startTime = std::chrono::steady_clock::now();
 
