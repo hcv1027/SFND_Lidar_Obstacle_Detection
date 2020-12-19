@@ -47,16 +47,15 @@ void render2DTree(Node* node, pcl::visualization::PCLVisualizer::Ptr& viewer,
   if (node != NULL) {
     Box upperWindow = window;
     Box lowerWindow = window;
-    // split on x axis
     if (depth % 2 == 0) {
+      // split on x axis
       viewer->addLine(pcl::PointXYZ(node->point[0], window.y_min, 0),
                       pcl::PointXYZ(node->point[0], window.y_max, 0), 0, 0, 1,
                       "line" + std::to_string(iteration));
       lowerWindow.x_max = node->point[0];
       upperWindow.x_min = node->point[0];
-    }
-    // split on y axis
-    else {
+    } else {
+      // split on y axis
       viewer->addLine(pcl::PointXYZ(window.x_min, node->point[1], 0),
                       pcl::PointXYZ(window.x_max, node->point[1], 0), 1, 0, 0,
                       "line" + std::to_string(iteration));
@@ -71,7 +70,7 @@ void render2DTree(Node* node, pcl::visualization::PCLVisualizer::Ptr& viewer,
 }
 
 std::vector<std::vector<int>> euclideanCluster(
-    const std::vector<std::vector<float>>& points, KdTree* tree,
+    const std::vector<std::vector<float>>& points, KdTree::Ptr tree,
     float distanceTol) {
   // TODO: Fill out this function to return list of indices for each cluster
 
@@ -100,16 +99,21 @@ int main() {
   // {-5.2,7.1}, {-5.7,6.3} };
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = CreateData(points);
 
-  KdTree* tree = new KdTree;
+  // KdTree* tree = new KdTree;
+  KdTree::Ptr tree(new KdTree());
 
-  for (int i = 0; i < points.size(); i++) tree->insert(points[i], i);
+  for (int i = 0; i < points.size(); i++) {
+    tree->insert(points[i], i);
+  }
 
   int it = 0;
   render2DTree(tree->root, viewer, window, it);
 
   std::cout << "Test Search" << std::endl;
   std::vector<int> nearby = tree->search({-6, 7}, 3.0);
-  for (int index : nearby) std::cout << index << ",";
+  for (int index : nearby) {
+    std::cout << index << ",";
+  }
   std::cout << std::endl;
 
   // Time segmentation process
@@ -129,15 +133,18 @@ int main() {
   for (std::vector<int> cluster : clusters) {
     pcl::PointCloud<pcl::PointXYZ>::Ptr clusterCloud(
         new pcl::PointCloud<pcl::PointXYZ>());
-    for (int indice : cluster)
+    for (int indice : cluster) {
       clusterCloud->points.push_back(
           pcl::PointXYZ(points[indice][0], points[indice][1], 0));
+    }
     renderPointCloud(viewer, clusterCloud,
                      "cluster" + std::to_string(clusterId),
                      colors[clusterId % 3]);
     ++clusterId;
   }
-  if (clusters.size() == 0) renderPointCloud(viewer, cloud, "data");
+  if (clusters.size() == 0) {
+    renderPointCloud(viewer, cloud, "data");
+  }
 
   while (!viewer->wasStopped()) {
     viewer->spinOnce();
