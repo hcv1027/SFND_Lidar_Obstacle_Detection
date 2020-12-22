@@ -25,6 +25,40 @@ typename pcl::PointCloud<PointT>::Ptr ProcessPointClouds<PointT>::FilterCloud(
 
   // TODO:: Fill in the function to do voxel grid point reduction and region
   // based filtering
+  typename pcl::PointCloud<PointT>::Ptr cloud_filtered(
+      new pcl::PointCloud<PointT>());
+  pcl::VoxelGrid<PointT> sor;
+  sor.setInputCloud(cloud);
+  sor.setLeafSize(filterRes, filterRes, filterRes);
+  sor.filter(*cloud_filtered);
+
+  typename pcl::PointCloud<PointT>::Ptr cloudRegion(
+      new pcl::PointCloud<PointT>());
+  pcl::CropBox<PointT> crop(true);
+  crop.setMin(minPoint);
+  crop.setMax(maxPoint);
+  crop.setInputCloud(cloud_filtered);
+  // crop.setKeepOrganized(true);
+  // crop.setUserFilterValue(0.1f);
+  crop.filter(*cloudRegion);
+
+  std::vector<int> roof_indices;
+  pcl::CropBox<PointT> crop_roof(true);
+  crop_roof.setMin(Eigen::Vector4f(-1.5, -1.7, -1, 1));
+  crop_roof.setMax(Eigen::Vector4f(2.6, 1.7, -0.4, 1));
+  crop_roof.setInputCloud(cloudRegion);
+  crop_roof.filter(roof_indices);
+
+  pcl::PointIndices::Ptr roof_inliers(new pcl::PointIndices());
+  for (auto idx : roof_indices) {
+    roof_inliers->indices.push_back(idx);
+  }
+
+  pcl::ExtractIndices<PointT> extract;
+  extract.setInputCloud(cloudRegion);
+  extract.setIndices(roof_inliers);
+  extract.setNegative(true);
+  extract.filter(*cloudRegion);
 
   auto endTime = std::chrono::steady_clock::now();
   auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -32,7 +66,7 @@ typename pcl::PointCloud<PointT>::Ptr ProcessPointClouds<PointT>::FilterCloud(
   std::cout << "filtering took " << elapsedTime.count() << " milliseconds"
             << std::endl;
 
-  return cloud;
+  return cloudRegion;
 }
 
 template <typename PointT>
@@ -105,10 +139,9 @@ ProcessPointClouds<PointT>::SegmentPlane(
 }
 
 template <typename PointT>
-std::vector<typename pcl::PointCloud<PointT>::Ptr>
-ProcessPointClouds<PointT>::Clustering(
-    typename pcl::PointCloud<PointT>::Ptr cloud, float clusterTolerance,
-    int minSize, int maxSize) {
+std::vector<typename pcl::PointCloud<PointT>::Ptr> ProcessPointClouds<
+    PointT>::Clustering(typename pcl::PointCloud<PointT>::Ptr cloud,
+                        float clusterTolerance, int minSize, int maxSize) {
   // Time clustering process
   auto startTime = std::chrono::steady_clock::now();
 
