@@ -40,6 +40,11 @@ class ProcessPointClouds {
 
   std::pair<typename pcl::PointCloud<PointT>::Ptr,
             typename pcl::PointCloud<PointT>::Ptr>
+  SegmentPlanePcl(typename pcl::PointCloud<PointT>::Ptr cloud,
+                  int maxIterations, float distanceThreshold);
+
+  std::pair<typename pcl::PointCloud<PointT>::Ptr,
+            typename pcl::PointCloud<PointT>::Ptr>
   SegmentPlane(typename pcl::PointCloud<PointT>::Ptr cloud, int maxIterations,
                float distanceThreshold);
 

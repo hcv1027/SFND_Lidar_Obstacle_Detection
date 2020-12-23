@@ -1,6 +1,7 @@
 // PCL lib Functions for processing point clouds
 
 #include "processPointClouds.h"
+#include <unordered_set>
 
 // constructor:
 template <typename PointT>
@@ -104,7 +105,7 @@ ProcessPointClouds<PointT>::SeparateClouds(
 template <typename PointT>
 std::pair<typename pcl::PointCloud<PointT>::Ptr,
           typename pcl::PointCloud<PointT>::Ptr>
-ProcessPointClouds<PointT>::SegmentPlane(
+ProcessPointClouds<PointT>::SegmentPlanePcl(
     typename pcl::PointCloud<PointT>::Ptr cloud, int maxIterations,
     float distanceThreshold) {
   // Time segmentation process
@@ -135,6 +136,68 @@ ProcessPointClouds<PointT>::SegmentPlane(
   std::pair<typename pcl::PointCloud<PointT>::Ptr,
             typename pcl::PointCloud<PointT>::Ptr>
       segResult = SeparateClouds(inliers, cloud);
+  return segResult;
+}
+
+template <typename PointT>
+std::pair<typename pcl::PointCloud<PointT>::Ptr,
+          typename pcl::PointCloud<PointT>::Ptr>
+ProcessPointClouds<PointT>::SegmentPlane(
+    typename pcl::PointCloud<PointT>::Ptr cloud, int maxIterations,
+    float distanceThreshold) {
+  std::unordered_set<int> inliersResult;
+
+  std::vector<int> idx_vec;
+  for (size_t i = 0; i < cloud->points.size(); i++) {
+    idx_vec.push_back(i);
+  }
+
+  // For max iterations
+  std::random_device rd;
+  for (int i = 0; i < maxIterations; ++i) {
+    std::unordered_set<int> inliers;
+    // Randomly sample subset and fit line
+    std::shuffle(idx_vec.begin(), idx_vec.end(),
+                 std::default_random_engine(rd()));
+    PointT &p1 = cloud->points[idx_vec[0]];
+    PointT &p2 = cloud->points[idx_vec[1]];
+    PointT &p3 = cloud->points[idx_vec[2]];
+    std::array<float, 3> vec1 = {p2.x - p1.x, p2.y - p1.y, p2.z - p1.z};
+    std::array<float, 3> vec2 = {p3.x - p1.x, p3.y - p1.y, p3.z - p1.z};
+    std::array<float, 3> v1_cross_v2 = {vec1[1] * vec2[2] - vec1[2] * vec2[1],
+                                        vec1[2] * vec2[0] - vec1[0] * vec2[2],
+                                        vec1[0] * vec2[1] - vec1[1] * vec2[0]};
+    // Plane equation: Ax + By + Cz + D = 0
+    float A = v1_cross_v2[0];
+    float B = v1_cross_v2[1];
+    float C = v1_cross_v2[2];
+    float D = -(A * p1.x + B * p1.y + C * p1.z);
+
+    // Measure distance between every point and fitted line
+    float temp = std::sqrt(A * A + B * B + C * C);
+    for (size_t i = 0; i < cloud->points.size(); i++) {
+      // If distance is smaller than threshold, count it as inlier
+      PointT &p = cloud->points[i];
+      float dist = std::fabs(A * p.x + B * p.y + C * p.z + D) / temp;
+      if (dist < distanceThreshold) {
+        inliers.insert(i);
+      }
+    }
+
+    if (inliers.size() > inliersResult.size()) {
+      inliersResult = inliers;
+    }
+  }
+
+  pcl::PointIndices::Ptr plane_inliers(new pcl::PointIndices());
+  for (int idx : inliersResult) {
+    plane_inliers->indices.push_back(idx);
+  }
+
+  std::pair<typename pcl::PointCloud<PointT>::Ptr,
+            typename pcl::PointCloud<PointT>::Ptr>
+      segResult = SeparateClouds(plane_inliers, cloud);
+
   return segResult;
 }
 
