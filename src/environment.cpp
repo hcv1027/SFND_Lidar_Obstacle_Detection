@@ -2,12 +2,49 @@
 // Create simple 3d highway enviroment using PCL
 // for exploring self-driving car sensors
 
+#include <fstream>
 #include <memory>
+// #include <iostream>
+#include "json.hpp"
 #include "processPointClouds.h"
 #include "render/render.h"
 #include "sensors/lidar.h"
 // using templates for processPointClouds so also include .cpp to help linker
 #include "processPointClouds.cpp"
+
+struct Params {
+  float filterRes;
+  Eigen::Vector4f minPoint;
+  Eigen::Vector4f maxPoint;
+  float clusterTol;
+  int clusterMinSize;
+  int clusterMaxSize;
+
+  Params() = default;
+  ~Params() = default;
+};
+
+Params params;
+
+void readConfig() {
+  using json = nlohmann::json;
+
+  std::ifstream json_stream("../src/config/params.json");
+  json params_json;
+  json_stream >> params_json;
+  json_stream.close();
+
+  params.filterRes = params_json["filterRes"];
+  params.minPoint =
+      Eigen::Vector4f(params_json["minPoint"][0], params_json["minPoint"][1],
+                      params_json["minPoint"][2], 1);
+  params.maxPoint =
+      Eigen::Vector4f(params_json["maxPoint"][0], params_json["maxPoint"][1],
+                      params_json["maxPoint"][2], 1);
+  params.clusterTol = params_json["clusterTol"];
+  params.clusterMinSize = params_json["clusterMinSize"];
+  params.clusterMaxSize = params_json["clusterMaxSize"];
+}
 
 std::vector<Car> initHighway(bool renderScene,
                              pcl::visualization::PCLVisualizer::Ptr& viewer) {
@@ -74,18 +111,45 @@ void cityBlock(pcl::visualization::PCLVisualizer::Ptr& viewer) {
   // -----Open 3D viewer and display City Block     -----
   // ----------------------------------------------------
 
-  ProcessPointClouds<pcl::PointXYZI>* pointProcessorI =
-      new ProcessPointClouds<pcl::PointXYZI>();
+  ProcessPointClouds<pcl::PointXYZI> point_processor;
   pcl::PointCloud<pcl::PointXYZI>::Ptr inputCloud =
-      pointProcessorI->loadPcd("../src/sensors/data/pcd/data_1/0000000000.pcd");
+      point_processor.loadPcd("../src/sensors/data/pcd/data_1/0000000000.pcd");
   // renderPointCloud(viewer, inputCloud, "inputCloud");
 
   // Experiment with the ? values and find what works best
   pcl::PointCloud<pcl::PointXYZI>::Ptr filterCloud =
-      pointProcessorI->FilterCloud(inputCloud, 0.1,
-                                   Eigen::Vector4f(-10, -10, -2, 1),
-                                   Eigen::Vector4f(50, 10, 5, 1));
-  renderPointCloud(viewer, filterCloud, "filterCloud");
+      point_processor.FilterCloud(inputCloud, params.filterRes, params.minPoint,
+                                  params.maxPoint);
+  // renderPointCloud(viewer, filterCloud, "filterCloud");
+
+  // Segmentation
+  std::pair<pcl::PointCloud<pcl::PointXYZI>::Ptr,
+            pcl::PointCloud<pcl::PointXYZI>::Ptr>
+      segmentCloud = point_processor.SegmentPlane(filterCloud, 100, 0.2);
+  // renderPointCloud(viewer, segmentCloud.first, "obstCloud", Color(0, 1, 0));
+  renderPointCloud(viewer, segmentCloud.second, "planeCloud", Color(1, 1, 1));
+
+  // Cluster
+  std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> cloudClusters =
+      point_processor.Clustering(segmentCloud.first, params.clusterTol,
+                                 params.clusterMinSize, params.clusterMaxSize);
+  int clusterId = 0;
+  std::vector<Color> colors = {
+      Color(0.0078, 0.651, 0.353), Color(0.906, 0.902, 0),
+      Color(0.902, 0.427, 0.0078), Color(0.843, 0.4274, 0.859),
+      Color(0, 0.2157, 0.68),      Color(0.808, 1, 0.694),
+      Color(0.835, 0.93, 0.302),   Color(1, 0.463, 0.33),
+      Color(0.992, 0.706, 0.318),  Color(0.627, 0, 0.396)};
+  for (pcl::PointCloud<pcl::PointXYZI>::Ptr cluster : cloudClusters) {
+    std::cout << "cluster size ";
+    point_processor.numPoints(cluster);
+    renderPointCloud(viewer, cluster, "obstCloud" + std::to_string(clusterId),
+                     colors[clusterId % colors.size()]);
+
+    Box box = point_processor.BoundingBox(cluster);
+    renderBox(viewer, box, clusterId, Color(1, 0, 0), 1);
+    ++clusterId;
+  }
 }
 
 // setAngle: SWITCH CAMERA ANGLE {XY, TopDown, Side, FPS}
@@ -119,6 +183,7 @@ void initCamera(CameraAngle setAngle,
 
 int main(int argc, char** argv) {
   std::cout << "starting enviroment" << std::endl;
+  readConfig();
 
   pcl::visualization::PCLVisualizer::Ptr viewer(
       new pcl::visualization::PCLVisualizer("3D Viewer"));
