@@ -4,7 +4,6 @@
 
 #include <fstream>
 #include <memory>
-// #include <iostream>
 #include "json.hpp"
 #include "processPointClouds.h"
 #include "render/render.h"
@@ -106,15 +105,12 @@ void simpleHighway(pcl::visualization::PCLVisualizer::Ptr& viewer) {
   }
 }
 
-void cityBlock(pcl::visualization::PCLVisualizer::Ptr& viewer) {
+void cityBlock(pcl::visualization::PCLVisualizer::Ptr& viewer,
+               ProcessPointClouds<pcl::PointXYZI>& point_processor,
+               const pcl::PointCloud<pcl::PointXYZI>::Ptr& inputCloud) {
   // ----------------------------------------------------
   // -----Open 3D viewer and display City Block     -----
   // ----------------------------------------------------
-
-  ProcessPointClouds<pcl::PointXYZI> point_processor;
-  pcl::PointCloud<pcl::PointXYZI>::Ptr inputCloud =
-      point_processor.loadPcd("../src/sensors/data/pcd/data_1/0000000000.pcd");
-  // renderPointCloud(viewer, inputCloud, "inputCloud");
 
   // Experiment with the ? values and find what works best
   pcl::PointCloud<pcl::PointXYZI>::Ptr filterCloud =
@@ -189,10 +185,27 @@ int main(int argc, char** argv) {
       new pcl::visualization::PCLVisualizer("3D Viewer"));
   CameraAngle setAngle = XY;
   initCamera(setAngle, viewer);
-  // simpleHighway(viewer);
-  cityBlock(viewer);
+
+  ProcessPointClouds<pcl::PointXYZI> point_processor;
+  std::vector<boost::filesystem::path> stream =
+      point_processor.streamPcd("../src/sensors/data/pcd/data_1");
+  auto streamIterator = stream.begin();
+  pcl::PointCloud<pcl::PointXYZI>::Ptr inputCloudI;
 
   while (!viewer->wasStopped()) {
+    // Clear viewer
+    viewer->removeAllPointClouds();
+    viewer->removeAllShapes();
+
+    // Load pcd and run obstacle detection process
+    inputCloudI = point_processor.loadPcd((*streamIterator).string());
+    cityBlock(viewer, point_processor, inputCloudI);
+
+    streamIterator++;
+    if (streamIterator == stream.end()) {
+      streamIterator = stream.begin();
+    }
+
     viewer->spinOnce();
   }
 }
