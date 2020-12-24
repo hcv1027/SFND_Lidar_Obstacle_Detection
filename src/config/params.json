@@ -10,7 +10,7 @@
         7,
         5
     ],
-    "clusterTol": 0.75,
+    "clusterTol": 0.4,
     "clusterMinSize": 10,
     "clusterMaxSize": 1500
 }
