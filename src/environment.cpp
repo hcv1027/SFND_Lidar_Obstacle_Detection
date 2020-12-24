@@ -4,6 +4,7 @@
 
 #include <fstream>
 #include <memory>
+#include <string>
 #include "json.hpp"
 #include "processPointClouds.h"
 #include "render/render.h"
@@ -12,6 +13,7 @@
 #include "processPointClouds.cpp"
 
 struct Params {
+  std::string pcdPath;
   float filterRes;
   Eigen::Vector4f minPoint;
   Eigen::Vector4f maxPoint;
@@ -33,6 +35,7 @@ void readConfig() {
   json_stream >> params_json;
   json_stream.close();
 
+  params.pcdPath = params_json["pcdPath"];
   params.filterRes = params_json["filterRes"];
   params.minPoint =
       Eigen::Vector4f(params_json["minPoint"][0], params_json["minPoint"][1],
@@ -199,7 +202,7 @@ int main(int argc, char** argv) {
 
   ProcessPointClouds<pcl::PointXYZI> point_processor;
   std::vector<boost::filesystem::path> stream =
-      point_processor.streamPcd("../src/sensors/data/pcd/data_1");
+      point_processor.streamPcd(params.pcdPath);
   auto streamIterator = stream.begin();
   pcl::PointCloud<pcl::PointXYZI>::Ptr inputCloudI;
 
