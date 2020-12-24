@@ -194,7 +194,7 @@ int main(int argc, char** argv) {
 
   pcl::visualization::PCLVisualizer::Ptr viewer(
       new pcl::visualization::PCLVisualizer("3D Viewer"));
-  CameraAngle setAngle = XY;
+  CameraAngle setAngle = FPS;
   initCamera(setAngle, viewer);
 
   ProcessPointClouds<pcl::PointXYZI> point_processor;
