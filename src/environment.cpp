@@ -119,9 +119,10 @@ void cityBlock(pcl::visualization::PCLVisualizer::Ptr& viewer,
   // renderPointCloud(viewer, filterCloud, "filterCloud");
 
   // Segmentation
-  std::pair<pcl::PointCloud<pcl::PointXYZI>::Ptr,
+  /* std::pair<pcl::PointCloud<pcl::PointXYZI>::Ptr,
             pcl::PointCloud<pcl::PointXYZI>::Ptr>
       segmentCloudPcl = point_processor.SegmentPlanePcl(filterCloud, 100, 0.2);
+     */
 
   std::pair<pcl::PointCloud<pcl::PointXYZI>::Ptr,
             pcl::PointCloud<pcl::PointXYZI>::Ptr>
@@ -130,11 +131,10 @@ void cityBlock(pcl::visualization::PCLVisualizer::Ptr& viewer,
   renderPointCloud(viewer, segmentCloud.second, "planeCloud", Color(1, 1, 1));
 
   // Cluster
-  std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> cloudClustersPcl =
+  /* std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> cloudClustersPcl =
       point_processor.ClusteringPcl(segmentCloud.first, params.clusterTol,
                                     params.clusterMinSize,
-                                    params.clusterMaxSize);
-
+                                    params.clusterMaxSize); */
   std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> cloudClusters =
       point_processor.Clustering(segmentCloud.first, params.clusterTol,
                                  params.clusterMinSize, params.clusterMaxSize);

@@ -22,9 +22,10 @@ struct Node {
 struct KdTree {
   using Ptr = std::shared_ptr<KdTree>;
   Node* root;
+  int depth_;
   int dimension_;
 
-  KdTree(int dimension) : root(NULL), dimension_(dimension) {
+  KdTree(int dimension) : root(NULL), depth_(0), dimension_(dimension) {
     // std::cout << "KdTree's dimension is " << dimension_ << std::endl;
   }
 
@@ -52,16 +53,20 @@ struct KdTree {
     }
     // std::cout << "insert " << id << " to depth " << depth << std::endl;
     *curr_node = new Node(point, id);
+    if (depth > depth_) {
+      depth_ = depth;
+    }
   }
 
   // return a list of point ids in the tree that are within distance of target
-  std::vector<int> search(std::vector<float> target, float distanceTol) {
+  std::vector<int> search(const std::vector<float>& target, float distanceTol) {
     std::vector<int> ids;
 
     if (root != NULL) {
       // The pair in searchList is the pair of <depth, Node*>.
       std::list<std::pair<int, Node*>> searchList;
       searchList.push_front(std::make_pair(0, root));
+      const float box_threshold = 2 * distanceTol;
       while (!searchList.empty()) {
         int depth = searchList.front().first;
         Node* node = searchList.front().second;
@@ -70,7 +75,7 @@ struct KdTree {
         // Check if node is in the range of target's hyper-dimension box
         bool in_range = true;
         for (int i = 0; i < dimension_; ++i) {
-          if (std::fabs(target[i] - node->point[i]) > 2 * distanceTol) {
+          if (std::fabs(target[i] - node->point[i]) > box_threshold) {
             in_range = false;
             break;
           }

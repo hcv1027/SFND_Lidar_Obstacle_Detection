@@ -293,11 +293,13 @@ std::vector<typename pcl::PointCloud<PointT>::Ptr> ProcessPointClouds<
   std::vector<typename pcl::PointCloud<PointT>::Ptr> clusters;
 
   // Build KdTree
+  // auto t1 = std::chrono::steady_clock::now();
   KdTree::Ptr tree(new KdTree(3));
   std::vector<int> idx_vec;
   for (size_t i = 0; i < cloud->points.size(); i++) {
     idx_vec.push_back(i);
   }
+  // Shuffle the order of point cloud to let kdtree keep balence.
   std::random_device rd;
   std::shuffle(idx_vec.begin(), idx_vec.end(),
                std::default_random_engine(rd()));
@@ -307,22 +309,31 @@ std::vector<typename pcl::PointCloud<PointT>::Ptr> ProcessPointClouds<
                                 cloud->points[idx].z};
     tree->insert(point, idx);
   }
+  // auto t2 = std::chrono::steady_clock::now();
 
   // Euclidean cluster
-  std::unordered_set<int> processedPoints;
+  std::vector<int> processedPoints(cloud->points.size(), 0);
   for (int i = 0; i < cloud->points.size(); ++i) {
-    if (processedPoints.count(i) == 0) {
-      typename pcl::PointCloud<PointT>::Ptr cluster_cloud(
-          new pcl::PointCloud<PointT>);
-      proximity(cloud, i, tree, clusterTolerance, cluster_cloud,
-                processedPoints);
+    if (processedPoints[i] == 0) {
+      std::list<int> cluster_idx;
+      // auto p1 = std::chrono::steady_clock::now();
+      proximity(cloud, i, tree, clusterTolerance, cluster_idx, processedPoints);
+      // auto p2 = std::chrono::steady_clock::now();
+      // std::chrono::duration<double> time_diff = p2 - p1;
+      // std::cout << "new cluster: " << time_diff.count() * 1000 << std::endl;
 
-      if (cluster_cloud->points.size() > minSize &&
-          cluster_cloud->points.size() < maxSize) {
+      if (cluster_idx.size() > minSize && cluster_idx.size() < maxSize) {
+        typename pcl::PointCloud<PointT>::Ptr cluster_cloud(
+            new pcl::PointCloud<PointT>);
+        for (int id : cluster_idx) {
+          cluster_cloud->push_back(cloud->points[id]);
+        }
+
         clusters.push_back(cluster_cloud);
       }
     }
   }
+  // auto t3 = std::chrono::steady_clock::now();
 
   auto endTime = std::chrono::steady_clock::now();
   auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -331,22 +342,30 @@ std::vector<typename pcl::PointCloud<PointT>::Ptr> ProcessPointClouds<
             << " milliseconds and found " << clusters.size() << " clusters"
             << std::endl;
 
+  // std::chrono::duration<double> time_diff = t2 - t1;
+  // std::cout << "kdtree: " << time_diff.count() * 1000 << " milliseconds"
+  //           << std::endl;
+  // time_diff = t3 - t2;
+  // std::cout << "cluster: " << time_diff.count() * 1000 << " milliseconds"
+  //           << std::endl;
+  // std::cout << "kdtree depth: " << tree->depth_ << std::endl;
+
   return clusters;
 }
 
 template <typename PointT>
 void ProcessPointClouds<PointT>::proximity(
     typename pcl::PointCloud<PointT>::Ptr cloud, int id, KdTree::Ptr tree,
-    float distanceTol, typename pcl::PointCloud<PointT>::Ptr cluster_cloud,
-    std::unordered_set<int>& processedPoints) {
-  processedPoints.insert(id);
-  cluster_cloud->push_back(cloud->points[id]);
+    float distanceTol, std::list<int>& cluster_idx,
+    std::vector<int>& processedPoints) {
+  processedPoints[id] = 1;
+  cluster_idx.push_back(id);
   std::vector<float> target = {cloud->points[id].x, cloud->points[id].y,
                                cloud->points[id].z};
   std::vector<int> nearby = tree->search(target, distanceTol);
   for (int i = 0; i < nearby.size(); ++i) {
-    if (processedPoints.count(nearby[i]) == 0) {
-      proximity(cloud, nearby[i], tree, distanceTol, cluster_cloud,
+    if (processedPoints[nearby[i]] == 0) {
+      proximity(cloud, nearby[i], tree, distanceTol, cluster_idx,
                 processedPoints);
     }
   }

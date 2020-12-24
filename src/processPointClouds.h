@@ -60,8 +60,8 @@ class ProcessPointClouds {
 
   void proximity(typename pcl::PointCloud<PointT>::Ptr cloud, int id,
                  KdTree::Ptr tree, float distanceTol,
-                 typename pcl::PointCloud<PointT>::Ptr cluster_cloud,
-                 std::unordered_set<int>& processedPoints);
+                 std::list<int>& cluster_idx,
+                 std::vector<int>& processedPoints);
 
   Box BoundingBox(typename pcl::PointCloud<PointT>::Ptr cluster);
 
