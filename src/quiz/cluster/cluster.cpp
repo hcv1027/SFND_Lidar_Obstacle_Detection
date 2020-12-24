@@ -120,8 +120,7 @@ int main() {
   // {-5.2,7.1}, {-5.7,6.3} };
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = CreateData(points);
 
-  // KdTree* tree = new KdTree;
-  KdTree::Ptr tree(new KdTree());
+  KdTree::Ptr tree(new KdTree(2));
 
   for (int i = 0; i < points.size(); i++) {
     tree->insert(points[i], i);

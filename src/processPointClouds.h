@@ -16,7 +16,9 @@
 #include <ctime>
 #include <iostream>
 #include <string>
+#include <unordered_set>
 #include <vector>
+#include "quiz/cluster/kdtree.h"
 #include "render/box.h"
 
 template <typename PointT>
@@ -48,9 +50,18 @@ class ProcessPointClouds {
   SegmentPlane(typename pcl::PointCloud<PointT>::Ptr cloud, int maxIterations,
                float distanceThreshold);
 
+  std::vector<typename pcl::PointCloud<PointT>::Ptr> ClusteringPcl(
+      typename pcl::PointCloud<PointT>::Ptr cloud, float clusterTolerance,
+      int minSize, int maxSize);
+
   std::vector<typename pcl::PointCloud<PointT>::Ptr> Clustering(
       typename pcl::PointCloud<PointT>::Ptr cloud, float clusterTolerance,
       int minSize, int maxSize);
+
+  void proximity(typename pcl::PointCloud<PointT>::Ptr cloud, int id,
+                 KdTree::Ptr tree, float distanceTol,
+                 typename pcl::PointCloud<PointT>::Ptr cluster_cloud,
+                 std::unordered_set<int>& processedPoints);
 
   Box BoundingBox(typename pcl::PointCloud<PointT>::Ptr cluster);
 

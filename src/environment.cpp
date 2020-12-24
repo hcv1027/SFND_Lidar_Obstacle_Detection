@@ -93,7 +93,7 @@ void simpleHighway(pcl::visualization::PCLVisualizer::Ptr& viewer) {
   renderPointCloud(viewer, segmentCloud.second, "planeCloud", Color(1, 1, 1));
 
   std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloudClusters =
-      point_processor.Clustering(segmentCloud.first, 2.0, 3, 40);
+      point_processor.ClusteringPcl(segmentCloud.first, 2.0, 3, 40);
   int clusterId = 0;
   std::vector<Color> colors = {Color(1, 0, 0), Color(0, 1, 0), Color(0, 0, 1)};
   for (pcl::PointCloud<pcl::PointXYZ>::Ptr cluster : cloudClusters) {
@@ -121,14 +121,25 @@ void cityBlock(pcl::visualization::PCLVisualizer::Ptr& viewer,
   // Segmentation
   std::pair<pcl::PointCloud<pcl::PointXYZI>::Ptr,
             pcl::PointCloud<pcl::PointXYZI>::Ptr>
+      segmentCloudPcl = point_processor.SegmentPlanePcl(filterCloud, 100, 0.2);
+
+  std::pair<pcl::PointCloud<pcl::PointXYZI>::Ptr,
+            pcl::PointCloud<pcl::PointXYZI>::Ptr>
       segmentCloud = point_processor.SegmentPlane(filterCloud, 100, 0.2);
   // renderPointCloud(viewer, segmentCloud.first, "obstCloud", Color(0, 1, 0));
   renderPointCloud(viewer, segmentCloud.second, "planeCloud", Color(1, 1, 1));
 
   // Cluster
+  std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> cloudClustersPcl =
+      point_processor.ClusteringPcl(segmentCloud.first, params.clusterTol,
+                                    params.clusterMinSize,
+                                    params.clusterMaxSize);
+
   std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> cloudClusters =
       point_processor.Clustering(segmentCloud.first, params.clusterTol,
                                  params.clusterMinSize, params.clusterMaxSize);
+
+  // Render each detected obstacle's point cloud and bounding box.
   int clusterId = 0;
   std::vector<Color> colors = {
       Color(0.0078, 0.651, 0.353), Color(0.906, 0.902, 0),
@@ -137,8 +148,8 @@ void cityBlock(pcl::visualization::PCLVisualizer::Ptr& viewer,
       Color(0.835, 0.93, 0.302),   Color(1, 0.463, 0.33),
       Color(0.992, 0.706, 0.318),  Color(0.627, 0, 0.396)};
   for (pcl::PointCloud<pcl::PointXYZI>::Ptr cluster : cloudClusters) {
-    std::cout << "cluster size ";
-    point_processor.numPoints(cluster);
+    // std::cout << "cluster size ";
+    // point_processor.numPoints(cluster);
     renderPointCloud(viewer, cluster, "obstCloud" + std::to_string(clusterId),
                      colors[clusterId % colors.size()]);
 
@@ -204,6 +215,8 @@ int main(int argc, char** argv) {
     streamIterator++;
     if (streamIterator == stream.end()) {
       streamIterator = stream.begin();
+      std::cout << "Reset stream." << std::endl;
+      std::cout << std::endl;
     }
 
     viewer->spinOnce();
