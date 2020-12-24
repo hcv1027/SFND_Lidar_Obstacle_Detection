@@ -149,24 +149,34 @@ ProcessPointClouds<PointT>::SegmentPlane(
   // Time segmentation process
   auto startTime = std::chrono::steady_clock::now();
 
-  std::unordered_set<int> inliersResult;
-
-  std::vector<int> idx_vec;
-  for (size_t i = 0; i < cloud->points.size(); i++) {
-    idx_vec.push_back(i);
-  }
-
+  std::vector<int> inliersResult;
   // Using RANSAC algorithm to segment plane
   // For max iterations
   std::random_device rd;
+  std::default_random_engine gen = std::default_random_engine(rd());
+  std::uniform_int_distribution<int> dis(0, cloud->points.size());
+
+  double plane_time = 0.0;
+  double ransac_time = 0.0;
   for (int i = 0; i < maxIterations; ++i) {
-    std::unordered_set<int> inliers;
+    std::vector<int> inliers;
+    std::vector<int> rand_idx;
     // Randomly sample subset and fit plane
-    std::shuffle(idx_vec.begin(), idx_vec.end(),
-                 std::default_random_engine(rd()));
-    PointT& p1 = cloud->points[idx_vec[0]];
-    PointT& p2 = cloud->points[idx_vec[1]];
-    PointT& p3 = cloud->points[idx_vec[2]];
+    while (rand_idx.size() < 3) {
+      int idx = dis(gen);
+      if (rand_idx.size() == 0) {
+        rand_idx.push_back(idx);
+      } else if (rand_idx.size() == 1 && idx != rand_idx[0]) {
+        rand_idx.push_back(idx);
+      } else if (rand_idx.size() == 2 && idx != rand_idx[0] &&
+                 idx != rand_idx[1]) {
+        rand_idx.push_back(idx);
+      }
+    }
+
+    PointT& p1 = cloud->points[rand_idx[0]];
+    PointT& p2 = cloud->points[rand_idx[1]];
+    PointT& p3 = cloud->points[rand_idx[2]];
     std::array<float, 3> vec1 = {p2.x - p1.x, p2.y - p1.y, p2.z - p1.z};
     std::array<float, 3> vec2 = {p3.x - p1.x, p3.y - p1.y, p3.z - p1.z};
     std::array<float, 3> v1_cross_v2 = {vec1[1] * vec2[2] - vec1[2] * vec2[1],
@@ -180,24 +190,32 @@ ProcessPointClouds<PointT>::SegmentPlane(
 
     // Measure distance between every point and fitted line
     float temp = std::sqrt(A * A + B * B + C * C);
+    // Performance improve:
+    // std::fabs(A * p.x + B * p.y + C * p.z + D) / temp < distanceThreshold
+    // is equal to
+    // std::fabs(A * p.x + B * p.y + C * p.z + D) < distanceThreshold * temp
+    float threshold = distanceThreshold * temp;
     for (size_t i = 0; i < cloud->points.size(); i++) {
       // If distance is smaller than threshold, count it as inlier
       PointT& p = cloud->points[i];
-      float dist = std::fabs(A * p.x + B * p.y + C * p.z + D) / temp;
-      if (dist < distanceThreshold) {
-        inliers.insert(i);
+      // float dist = std::fabs(A * p.x + B * p.y + C * p.z + D) / temp;
+      float dist = std::fabs(A * p.x + B * p.y + C * p.z + D);
+      if (dist < threshold) {
+        inliers.push_back(i);
       }
     }
 
     if (inliers.size() > inliersResult.size()) {
-      inliersResult = inliers;
+      // inliersResult = inliers;
+      inliersResult.swap(inliers);
     }
   }
 
   pcl::PointIndices::Ptr plane_inliers(new pcl::PointIndices());
-  for (int idx : inliersResult) {
-    plane_inliers->indices.push_back(idx);
-  }
+  plane_inliers->indices.swap(inliersResult);
+  // for (int idx : inliersResult) {
+  //   plane_inliers->indices.push_back(idx);
+  // }
 
   auto endTime = std::chrono::steady_clock::now();
   auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(
