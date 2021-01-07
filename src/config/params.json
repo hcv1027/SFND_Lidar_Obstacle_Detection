@@ -1,5 +1,5 @@
 {
-    "pcdPath": "../src/sensors/data/pcd/data_2",
+    "pcdPath": "../src/sensors/data/pcd/data_1",
     "filterRes": 0.2,
     "minPoint": [
         -20,
