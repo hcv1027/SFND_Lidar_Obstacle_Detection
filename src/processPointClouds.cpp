@@ -1,6 +1,7 @@
 // PCL lib Functions for processing point clouds
 
 #include "processPointClouds.h"
+#include <random>
 #include <unordered_set>
 
 // constructor:
@@ -231,9 +232,10 @@ ProcessPointClouds<PointT>::SegmentPlane(
 }
 
 template <typename PointT>
-std::vector<typename pcl::PointCloud<PointT>::Ptr> ProcessPointClouds<
-    PointT>::ClusteringPcl(typename pcl::PointCloud<PointT>::Ptr cloud,
-                           float clusterTolerance, int minSize, int maxSize) {
+std::vector<typename pcl::PointCloud<PointT>::Ptr>
+ProcessPointClouds<PointT>::ClusteringPcl(
+    typename pcl::PointCloud<PointT>::Ptr cloud, float clusterTolerance,
+    int minSize, int maxSize) {
   // Time clustering process
   auto startTime = std::chrono::steady_clock::now();
 
@@ -284,9 +286,10 @@ std::vector<typename pcl::PointCloud<PointT>::Ptr> ProcessPointClouds<
 }
 
 template <typename PointT>
-std::vector<typename pcl::PointCloud<PointT>::Ptr> ProcessPointClouds<
-    PointT>::Clustering(typename pcl::PointCloud<PointT>::Ptr cloud,
-                        float clusterTolerance, int minSize, int maxSize) {
+std::vector<typename pcl::PointCloud<PointT>::Ptr>
+ProcessPointClouds<PointT>::Clustering(
+    typename pcl::PointCloud<PointT>::Ptr cloud, float clusterTolerance,
+    int minSize, int maxSize) {
   // Time clustering process
   auto startTime = std::chrono::steady_clock::now();
 
